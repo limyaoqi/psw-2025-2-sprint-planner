@@ -10,6 +10,7 @@ import DailyUpdate from "./pages/DailyUpdate/index";
 import SprintReview from "./pages/SprintReview/index";
 import History from "./pages/History/index";
 import NotFound from "./pages/NotFound/index";
+import HistoryDetails from "./pages/History/Details/index"; // new added for history details
 import { gradients } from "./styles/tokens";
 import ToastProvider from "./components/ui/ToastProvider";
 
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
       { path: "sprint/review", element: <SprintReview /> },
       { path: "history", element: <History /> },
       { path: "*", element: <NotFound /> },
+      { path: "history/:id", element: <HistoryDetails /> }, // new added for history details
     ],
   },
 ]);

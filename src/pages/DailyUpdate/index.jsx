@@ -12,6 +12,8 @@ import PageTitle from "../../components/ui/PageTitle";
 import * as S from "./style";
 import { useToast } from "../../components/ui/ToastProvider";
 
+import { useNavigate } from "react-router-dom";
+
 function ymd(date) {
   return date.toISOString().slice(0, 10);
 }
@@ -59,6 +61,7 @@ export default function DailyUpdate() {
         hours: initial?.perGoal?.[g.id]?.hours ?? "",
         note: initial?.perGoal?.[g.id]?.note || "",
         focus: initial?.perGoal?.[g.id]?.focus || false,
+        status: initial?.perGoal?.[g.id]?.status || "not-started", // started or not (new added)
       });
     });
     return map;
@@ -70,15 +73,23 @@ export default function DailyUpdate() {
   function toggleFocus(id) {
     setPerGoal((prev) => {
       const next = new Map(prev);
-      const current = next.get(id) || { focus: false };
+      const current = next.get(id) || { focus: false, status: "not-started" };
       const nextVal = !current.focus;
+
       if (nextVal) {
         const focusedCount = Array.from(next.values()).filter(
           (v) => v.focus
         ).length;
         if (focusedCount >= 3) return prev; // max 3
       }
-      next.set(id, { ...current, focus: nextVal });
+
+      next.set(id, {
+        ...current,
+        focus: nextVal,
+        done: nextVal ? false : current.done, // remove done if focusing
+        status: nextVal ? "in-progress" : current.done ? "done" : "not-started",
+      });
+
       return next;
     });
   }
@@ -101,22 +112,75 @@ export default function DailyUpdate() {
       perGoal: perGoalObj,
       plan,
     };
+
     try {
+      // save daily updates
       const raw = localStorage.getItem("dailyUpdates");
       const all = raw ? JSON.parse(raw) : {};
       all[todayKey] = payload;
       localStorage.setItem("dailyUpdates", JSON.stringify(all));
+
+      // update sprint order based on statuses
+      const sprintRaw = localStorage.getItem("currentSprint");
+      if (sprintRaw) {
+        const sprint = JSON.parse(sprintRaw);
+        sprint.order = { todo: [], inprogress: [], done: [] };
+
+        sprint.goals.forEach((g) => {
+          const state = perGoalObj[g.id] || {};
+
+          if (state.done) {
+            sprint.order.done.push(g.id);
+          } else if (state.status === "in-progress" || state.focus) {
+            sprint.order.inprogress.push(g.id);
+          } else {
+            sprint.order.todo.push(g.id);
+          }
+        });
+
+        localStorage.setItem("currentSprint", JSON.stringify(sprint));
+      }
+
       showToast("Daily update saved.", { severity: "success" });
     } catch {
       showToast("Failed to save daily update.", { severity: "error" });
     }
   }
+  const navigate = useNavigate();
 
   return (
     <S.Page>
-      <PageTitle subtitle="Check in and reflect daily">
-        Daily Update{typeof sprintDay === "number" ? ` · Day ${sprintDay}` : ""}
-      </PageTitle>
+      {/* Header Row  (new added) */}
+      <S.HeaderRow
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        {/* Left side */}
+        <PageTitle subtitle="Check in and reflect daily">
+          {currentSprint?.name
+            ? `Daily Update · Day ${sprintDay} / ${currentSprint?.days || 0}`
+            : "Daily Update"}
+        </PageTitle>
+
+        {/* Right side */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+          }}
+        >
+          <Typography variant="h4">
+            {currentSprint?.name ? currentSprint.name : "No Sprint"}
+          </Typography>
+          <Typography variant="subtitle2" color="text.secondary">
+            {today.toLocaleDateString()}
+          </Typography>
+        </div>
+      </S.HeaderRow>
 
       <S.Split>
         <SurfaceCard>
@@ -136,32 +200,77 @@ export default function DailyUpdate() {
                   return (
                     <S.GoalItem key={g.id}>
                       <S.GoalRowTop>
+                        {/* new added */}
                         <Checkbox
                           checked={!!state.done}
-                          onChange={(e) =>
-                            setGoalField(g.id, "done", e.target.checked)
-                          }
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setPerGoal((prev) => {
+                              const next = new Map(prev);
+                              const current = next.get(g.id) || {};
+                              next.set(g.id, {
+                                ...current,
+                                done: checked,
+                                focus: checked ? false : current.focus, // remove focus if done
+                                status: checked
+                                  ? "done"
+                                  : current.focus
+                                  ? "in-progress"
+                                  : "not-started",
+                              });
+                              return next;
+                            });
+                          }}
                         />
+
                         <S.GoalTitle>{g.title}</S.GoalTitle>
                         <S.FieldSm>
                           <TextField
                             type="number"
                             label="Hours"
                             value={state.hours}
-                            onChange={(e) =>
-                              setGoalField(g.id, "hours", e.target.value)
-                            }
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === "" || Number(val) >= 0) {
+                                setGoalField(g.id, "hours", val);
+                              } else {
+                                showToast("Hours cannot be negative.", {
+                                  severity: "warning",
+                                });
+                              }
+                            }}
                             inputProps={{ min: 0 }}
                             fullWidth
                           />
                         </S.FieldSm>
-                        <Chip
-                          size="small"
-                          color={state.focus ? "primary" : "default"}
-                          variant={state.focus ? "filled" : "outlined"}
-                          label={state.focus ? "Focus" : "Set Focus"}
-                          onClick={() => toggleFocus(g.id)}
-                        />
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "flex-start",
+                          }}
+                        >
+                          <Chip
+                            size="small"
+                            color={state.focus ? "primary" : "default"}
+                            variant={state.focus ? "filled" : "outlined"}
+                            label={state.focus ? "Focus" : "Set Focus"}
+                            onClick={() => toggleFocus(g.id)}
+                          />
+                          <Typography
+                            variant="caption"
+                            sx={{ mt: 0.5 }}
+                            color={
+                              state.status === "in-progress"
+                                ? "primary"
+                                : state.status === "done"
+                                ? "success.main"
+                                : "text.secondary"
+                            }
+                          >
+                            {state.status}
+                          </Typography>
+                        </div>
                       </S.GoalRowTop>
                       <S.GoalRowBottom>
                         <TextField
@@ -187,9 +296,18 @@ export default function DailyUpdate() {
           <S.TallRight>
             <S.HeaderRow>
               <Typography variant="h6">Today's Plan (optional)</Typography>
-              <Button variant="contained" onClick={save}>
-                Save Daily Update
-              </Button>
+              {/* new added */}
+              {currentSprint && (
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    save();
+                    navigate("/");
+                  }}
+                >
+                  Save Daily Update
+                </Button>
+              )}
             </S.HeaderRow>
             <S.Fill>
               <TextField

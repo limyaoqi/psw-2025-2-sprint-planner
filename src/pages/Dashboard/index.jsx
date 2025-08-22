@@ -28,8 +28,12 @@ export default function Dashboard() {
     if (!currentSprint)
       return { sprintProgress: 0, hoursData: [], productivity: [] };
     const goals = currentSprint.goals || [];
-    const done = goals.filter((g) => g.status === "done").length;
-    const progress = goals.length ? Math.round((done / goals.length) * 100) : 0;
+
+    const order = currentSprint?.order || { todo: [], inprogress: [], done: [] };
+    const done = order.done.length;
+    const total = currentSprint?.goals?.length || 0;
+    const progress = total ? Math.round((done / total) * 100) : 0;
+
 
     const days = Number(currentSprint.days) || 7;
     const start = parseYmd(currentSprint.start);
@@ -48,6 +52,8 @@ export default function Dashboard() {
 
     const totalEst = goals.reduce((s, g) => s + (Number(g.hours) || 0), 0);
     const plannedPerDay = days ? totalEst / days : 0;
+
+    console.log(totalEst, plannedPerDay);
 
     const hoursData = dates.map((d) => {
       const key = toYmd(d);
@@ -90,6 +96,9 @@ export default function Dashboard() {
     return map;
   }, [currentSprint]);
 
+  console.log("hoursData", hoursData);
+
+
   return (
     <S.Page>
       <PageTitle subtitle="Track progress and manage your sprints">
@@ -100,18 +109,32 @@ export default function Dashboard() {
         <SurfaceCard>
           <S.Actions>
             {currentSprint ? (
-              <>
-                <Button variant="contained" component={Link} to="/daily">
-                  Daily Check-in
-                </Button>
-                <Button variant="outlined" component={Link} to="/sprint/review">
-                  Review
-                </Button>
-              </>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <Typography variant="h6">
+                  Current Sprint: {currentSprint.name || "Untitled"}
+                </Typography>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Button variant="contained" component={Link} to="/daily">
+                    Daily Check-in
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    component={Link}
+                    to="/sprint/review"
+                  >
+                    Review
+                  </Button>
+                </div>
+              </div>
             ) : (
-              <Button variant="contained" component={Link} to="/sprint/new">
-                New Sprint
-              </Button>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <Typography variant="h6">
+                  No active sprint. Start a new one!
+                </Typography>
+                <Button variant="contained" component={Link} to="/sprint/new">
+                  New Sprint
+                </Button>
+              </div>
             )}
           </S.Actions>
         </SurfaceCard>

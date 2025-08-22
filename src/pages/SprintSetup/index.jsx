@@ -1,10 +1,22 @@
 import * as React from "react";
-import { TextField, Button, Typography, Stack, MenuItem } from "@mui/material";
+import {
+  TextField,
+  Button,
+  Typography,
+  Stack,
+  MenuItem,
+  duration,
+} from "@mui/material";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { useNavigate } from "react-router-dom";
 import PageTitle from "../../components/ui/PageTitle";
 import SurfaceCard from "../../components/ui/SurfaceCard";
 import * as S from "./style";
+
+// new added
+import DeleteIcon from "@mui/icons-material/Delete";
+import { IconButton } from "@mui/material";
+import { useToast } from "../../components/ui/ToastProvider";
 
 function toYmd(d) {
   return d.toISOString().slice(0, 10);
@@ -12,6 +24,7 @@ function toYmd(d) {
 
 export default function SprintSetup() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [name, setName] = React.useState("");
   const [start, setStart] = React.useState(toYmd(new Date()));
   const [days, setDays] = React.useState(7);
@@ -35,18 +48,45 @@ export default function SprintSetup() {
   }, [start, days]);
 
   function addGoal() {
-    if (!draftGoal.title.trim()) return;
+    if (!draftGoal.title.trim()) {
+      showToast("Please enter goal description.", { severity: "warning" }); // new added
+      return;
+    }
+
+    if (draftGoal.hours < 0) {
+      showToast("Estimated hours cannot be negative.", { severity: "warning" }); // new added
+      return;
+    }
+
+    const maxHours = Number(days) * 24;
+    if (draftGoal.hours > maxHours) {
+      showToast("Exceeded expected finish days.", { severity: "warning" }); // new added
+      return;
+    }
+
     const id = `${Date.now()}`;
     const newGoal = {
       id,
       title: draftGoal.title.trim(),
-      hours: Number(draftGoal.hours) || 0,
+      hours: Number(draftGoal.hours) || 2,
       priority: draftGoal.priority,
       status: "todo",
     };
     setGoals((prev) => [...prev, newGoal]);
     setOrder((prev) => ({ ...prev, todo: [...prev.todo, id] }));
     setDraftGoal({ title: "", hours: 2, priority: "Medium" });
+  }
+
+  // delete goal function (new added)
+  function removeGoal(id) {
+    setGoals((prev) => prev.filter((g) => g.id !== id));
+    setOrder((prev) => {
+      const next = { ...prev };
+      for (const col of Object.keys(next)) {
+        next[col] = next[col].filter((gid) => gid !== id);
+      }
+      return next;
+    });
   }
 
   function onDragEnd(result) {
@@ -74,6 +114,28 @@ export default function SprintSetup() {
   }
 
   function startSprint() {
+    // start date validation (new added)
+    const today = toYmd(new Date());
+    if (start < today) {
+      showToast(`Please select a valid start date (${today} or later).`, {
+        severity: "error",
+      });
+      return;
+    }
+
+    if (endDate < today) {
+      showToast("End date cannot be before today.", { severity: "error" });
+      return;
+    }
+
+    // new added
+    if (goals.length === 0) {
+      showToast("Please add at least one goal before starting a sprint.", {
+        severity: "warning",
+      });
+      return;
+    }
+
     const sprint = {
       name: name || "Untitled Sprint",
       start,
@@ -121,10 +183,22 @@ export default function SprintSetup() {
                 label="Start Date"
                 type="date"
                 value={start}
-                onChange={(e) => setStart(e.target.value)}
+                // new added
+                onChange={(e) => {
+                  if (!e.target.value) {
+                    showToast("Cannot set empty start date.", {
+                      severity: "warning",
+                    });
+                    return;
+                  }
+                  setStart(e.target.value);
+                }}
                 InputLabelProps={{ shrink: true }}
                 inputRef={startInputRef}
                 onClick={() => startInputRef.current?.showPicker?.()}
+                inputProps={{
+                  min: toYmd(new Date()), // this ensures only today or future dates (new added)
+                }}
                 sx={{
                   "& input": { colorScheme: "dark" },
                   "& input::-webkit-calendar-picker-indicator": {
@@ -137,7 +211,16 @@ export default function SprintSetup() {
                 type="number"
                 label="Duration (days)"
                 value={days}
-                onChange={(e) => setDays(e.target.value)}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  if (val < 1 || val > 30) {
+                    showToast("Duration must be between 1 and 30 days.", {
+                      severity: "warning",
+                    });
+                    return; // don't update
+                  }
+                  setDays(e.target.value);
+                }}
                 inputProps={{ min: 1, max: 30 }}
                 fullWidth
               />
@@ -169,9 +252,20 @@ export default function SprintSetup() {
                   type="number"
                   label="Estimated Hours"
                   value={draftGoal.hours}
-                  onChange={(e) =>
-                    setDraftGoal((d) => ({ ...d, hours: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    const maxHours = Number(days) * 24;
+
+                    if (val > maxHours) {
+                      showToast(
+                        `Max allowed for this sprint is ${maxHours}h.`,
+                        { severity: "warning" }
+                      );
+                      return;
+                    }
+
+                    setDraftGoal((d) => ({ ...d, hours: e.target.value }));
+                  }}
                   inputProps={{ min: 0 }}
                   fullWidth
                 />
@@ -256,6 +350,17 @@ export default function SprintSetup() {
                                       >
                                         {g.hours}h
                                       </Typography>
+                                      {/* new added */}
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => removeGoal(g.id)}
+                                        sx={{
+                                          ml: "auto",
+                                          color: "red",
+                                        }}
+                                      >
+                                        <DeleteIcon fontSize="small" />
+                                      </IconButton>
                                     </S.Meta>
                                   </S.GoalCard>
                                 )}

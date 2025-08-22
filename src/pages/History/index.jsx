@@ -12,8 +12,10 @@ import {
 import SurfaceCard from "../../components/ui/SurfaceCard";
 import PageTitle from "../../components/ui/PageTitle";
 import * as S from "./style";
+import { useNavigate } from "react-router-dom";
 
 export default function History() {
+  const navigate = useNavigate();
   const history = React.useMemo(() => {
     try {
       const raw = localStorage.getItem("sprintHistory");
@@ -61,7 +63,7 @@ export default function History() {
         )}
       </SurfaceCard>
 
-      <SurfaceCard>
+      <SurfaceCard style={{ marginTop: 16 }}>
         <Typography variant="h6" gutterBottom>
           Past Sprints
         </Typography>
@@ -87,7 +89,11 @@ export default function History() {
                     secondary={`Completion: ${completion}% · Total hours: ${hours}h`}
                   />
                   <ListItemSecondaryAction>
-                    <Button size="small" variant="outlined">
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => navigate(`/history/${idx}`)} // go to details (new added) 
+                    >
                       Details
                     </Button>
                   </ListItemSecondaryAction>

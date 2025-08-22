@@ -11,8 +11,10 @@ import SurfaceCard from "../../components/ui/SurfaceCard";
 import PageTitle from "../../components/ui/PageTitle";
 import * as S from "./style";
 import { useToast } from "../../components/ui/ToastProvider";
+import { useNavigate } from "react-router-dom";
 
 export default function SprintReview() {
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const currentSprint = React.useMemo(() => {
     try {
@@ -40,6 +42,13 @@ export default function SprintReview() {
   const [rating, setRating] = React.useState(3);
 
   function completeSprint() {
+    for (let [id, hours] of actualHoursById.entries()) {
+      if (Number(hours) < 0) {
+        alert("Actual hours cannot be negative.");
+        return;
+      }
+    }
+
     const review = {
       date: new Date().toISOString(),
       name: currentSprint?.name || "Untitled Sprint",
@@ -127,18 +136,25 @@ export default function SprintReview() {
                     >
                       <MenuItem value="done">✅ Completed</MenuItem>
                       <MenuItem value="partial">⚠ Partial</MenuItem>
-                      <MenuItem value="not">❌ Not done</MenuItem>
+                      <MenuItem value="incomplete">❌ Not done</MenuItem>
                     </TextField>
                     <TextField
                       type="number"
                       size="small"
                       label="Actual (h)"
                       value={actualHoursById.get(g.id) || ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        if (val < 0) {
+                          showToast("Hours cannot be negative!", {
+                            severity: "warning",
+                          });
+                          return; // don’t update state
+                        }
                         setActualHoursById((prev) =>
                           new Map(prev).set(g.id, e.target.value)
-                        )
-                      }
+                        );
+                      }}
                       inputProps={{ min: 0 }}
                       fullWidth
                     />
@@ -190,15 +206,21 @@ export default function SprintReview() {
                 </TextField>
               </Stack>
             </S.ScrollFill>
-            <Stack direction="row" gap={1}>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={completeSprint}
-              >
-                Complete Sprint
-              </Button>
-            </Stack>
+            {/* new added */}
+            {currentSprint && (
+              <Stack direction="row" gap={1}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => {
+                    completeSprint();
+                    navigate("/");
+                  }}
+                >
+                  Complete Sprint
+                </Button>
+              </Stack>
+            )}
           </S.TallRight>
         </SurfaceCard>
       </S.Split>
