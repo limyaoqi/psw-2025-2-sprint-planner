@@ -73,7 +73,7 @@ export default function SprintSetup() {
       status: "todo",
     };
     setGoals((prev) => [...prev, newGoal]);
-    setOrder((prev) => ({ ...prev, todo: [...prev.todo, id] }));
+    setOrder((prev) => ({ ...prev, todo: [id, ...prev.todo] }));
     setDraftGoal({ title: "", hours: 2, priority: "Medium" });
   }
 
@@ -123,7 +123,7 @@ export default function SprintSetup() {
       return;
     }
 
-    if (endDate < today) {
+    if (end < today) {
       showToast("End date cannot be before today.", { severity: "error" });
       return;
     }

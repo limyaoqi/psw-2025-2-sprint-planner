@@ -70,29 +70,32 @@ export default function DailyUpdate() {
   const [plan, setPlan] = React.useState(initial?.plan || "");
 
   // Enforce focus limit 1-3
-  function toggleFocus(id) {
-    setPerGoal((prev) => {
-      const next = new Map(prev);
-      const current = next.get(id) || { focus: false, status: "not-started" };
-      const nextVal = !current.focus;
+  // Enforce focus limit 1-3
+function toggleFocus(id) {
+  setPerGoal((prev) => {
+    const next = new Map(prev);
+    const current = next.get(id) || { focus: false, status: "not-started" };
+    const nextVal = !current.focus;
 
-      if (nextVal) {
-        const focusedCount = Array.from(next.values()).filter(
-          (v) => v.focus
-        ).length;
-        if (focusedCount >= 3) return prev; // max 3
+    if (nextVal) {
+      const focusedCount = Array.from(next.values()).filter((v) => v.focus).length;
+      if (focusedCount >= 3) {
+        showToast("You can only focus on up to 3 goals.", { severity: "warning" });
+        return prev; // block without changing
       }
+    }
 
-      next.set(id, {
-        ...current,
-        focus: nextVal,
-        done: nextVal ? false : current.done, // remove done if focusing
-        status: nextVal ? "in-progress" : current.done ? "done" : "not-started",
-      });
-
-      return next;
+    next.set(id, {
+      ...current,
+      focus: nextVal,
+      done: nextVal ? false : current.done, // remove done if focusing
+      status: nextVal ? "in-progress" : current.done ? "done" : "not-started",
     });
-  }
+
+    return next;
+  });
+}
+
 
   function setGoalField(id, field, value) {
     setPerGoal((prev) => {
