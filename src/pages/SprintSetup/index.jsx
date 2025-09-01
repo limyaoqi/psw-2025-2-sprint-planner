@@ -53,6 +53,25 @@ export default function SprintSetup() {
       return;
     }
 
+    //  Prevent duplicate titles (case-insensitive)
+    const duplicate = goals.some(
+      (g) => g.title.toLowerCase() === draftGoal.title.trim().toLowerCase()
+    );
+    if (duplicate) {
+      showToast("A goal with this title already exists.", {
+        severity: "warning",
+      });
+      return;
+    }
+
+    //  Enforce max length (e.g., 50 chars)
+    if (draftGoal.title.trim().length > 50) {
+      showToast("Goal title must be 50 characters or less.", {
+        severity: "warning",
+      });
+      return;
+    }
+
     if (draftGoal.hours < 0) {
       showToast("Estimated hours cannot be negative.", { severity: "warning" }); // new added
       return;
@@ -136,6 +155,13 @@ export default function SprintSetup() {
       return;
     }
 
+    if (name.trim().length > 50) {
+      showToast("Sprint name must be 50 characters or less.", {
+        severity: "warning",
+      });
+      return;
+    }
+
     const sprint = {
       name: name || "Untitled Sprint",
       start,
@@ -146,6 +172,9 @@ export default function SprintSetup() {
     };
     try {
       localStorage.setItem("currentSprint", JSON.stringify(sprint));
+      if (localStorage.getItem("dailyUpdates")) {
+        localStorage.removeItem("dailyUpdates");
+      }
     } catch {}
     navigate("/");
   }
@@ -177,7 +206,16 @@ export default function SprintSetup() {
                 label="Sprint Name"
                 fullWidth
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val.trim().length > 50) {
+                    showToast("Sprint name cannot exceed 50 characters.", {
+                      severity: "warning",
+                    });
+                    return;
+                  }
+                  setName(val);
+                }}
               />
               <TextField
                 label="Start Date"
@@ -213,7 +251,7 @@ export default function SprintSetup() {
                 value={days}
                 onChange={(e) => {
                   const val = Number(e.target.value);
-                  if (val < 1 || val > 30) {
+                  if (val < 0 || val > 30) {
                     showToast("Duration must be between 1 and 30 days.", {
                       severity: "warning",
                     });
@@ -242,9 +280,18 @@ export default function SprintSetup() {
                   label="Goal Description"
                   fullWidth
                   value={draftGoal.title}
-                  onChange={(e) =>
-                    setDraftGoal((d) => ({ ...d, title: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+
+                    if (val.length > 50) {
+                      showToast("Goal title cannot exceed 50 characters.", {
+                        severity: "warning",
+                      });
+                      return;
+                    }
+
+                    setDraftGoal((d) => ({ ...d, title: val }));
+                  }}
                 />
               </S.Grow>
               <S.FieldSm>

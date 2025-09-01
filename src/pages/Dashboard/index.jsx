@@ -8,6 +8,8 @@ import ProgressRing from "../../components/charts/ProgressRing";
 import DailyHoursBar from "../../components/charts/DailyHoursBar";
 import ProductivityLine from "../../components/charts/ProductivityLine";
 
+import { useLocation } from "react-router-dom";
+
 export default function Dashboard() {
   // Load current sprint if present
   const currentSprint = React.useMemo(() => {

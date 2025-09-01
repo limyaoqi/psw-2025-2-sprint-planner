@@ -9,6 +9,11 @@ import {
 } from "@mui/material";
 import SurfaceCard from "../../../components/ui/SurfaceCard";
 
+import DailyHoursBar from "../../../components/charts/DailyHoursBar";
+import ProductivityLine from "../../../components/charts/ProductivityLine";
+import ProgressRing from "../../../components/charts/ProgressRing";
+import { Stack } from "@mui/material"; // add this if not imported already
+
 const HistoryDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -90,6 +95,63 @@ const HistoryDetails = () => {
               />
             </ListItem>
           </List>
+        </>
+      )}
+
+      {/* mini summarize */}
+      {sprint && (
+        <>
+          {/* Reflections Dashboard */}
+          <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+            Reflections Dashboard
+          </Typography>
+
+          <Stack direction="row" spacing={2}>
+            <SurfaceCard sx={{ flex: 1 }}>
+              <Typography variant="subtitle1" gutterBottom>
+                Sprint Completion
+              </Typography>
+              <div style={{ height: 200 }}>
+                <ProgressRing
+                  value={(() => {
+                    const total = sprint.goals?.length || 0;
+                    const done = sprint.goals?.filter(
+                      (g) => g.status?.toLowerCase() === "done"
+                    ).length;
+                    return total ? Math.round((done / total) * 100) : 0;
+                  })()}
+                />
+              </div>
+            </SurfaceCard>
+
+            <SurfaceCard sx={{ flex: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>
+                Hours: Planned vs Actual
+              </Typography>
+              <div style={{ height: 250 }}>
+                <DailyHoursBar
+                  data={sprint.goals?.map((g) => ({
+                    day: g.title, // show goal title instead of weekday
+                    planned: Number(g.estHours) || 0,
+                    actual: Number(g.actualHours) || 0,
+                  }))}
+                />
+              </div>
+            </SurfaceCard>
+          </Stack>
+          <SurfaceCard sx={{ mt: 2 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Weekly Productivity Trend
+            </Typography>
+            <div style={{ height: 250 }}>
+              <ProductivityLine
+                data={sprint.goals?.map((g, idx) => ({
+                  day: `G${idx + 1}`, // you can also map to dates if stored
+                  score: Number(g.actualHours) || 0,
+                }))}
+              />
+            </div>
+          </SurfaceCard>
         </>
       )}
     </SurfaceCard>
