@@ -71,31 +71,34 @@ export default function DailyUpdate() {
 
   // Enforce focus limit 1-3
   // Enforce focus limit 1-3
-function toggleFocus(id) {
-  setPerGoal((prev) => {
-    const next = new Map(prev);
-    const current = next.get(id) || { focus: false, status: "not-started" };
-    const nextVal = !current.focus;
+  function toggleFocus(id) {
+    setPerGoal((prev) => {
+      const next = new Map(prev);
+      const current = next.get(id) || { focus: false, status: "not-started" };
+      const nextVal = !current.focus;
 
-    if (nextVal) {
-      const focusedCount = Array.from(next.values()).filter((v) => v.focus).length;
-      if (focusedCount >= 3) {
-        showToast("You can only focus on up to 3 goals.", { severity: "warning" });
-        return prev; // block without changing
+      if (nextVal) {
+        const focusedCount = Array.from(next.values()).filter(
+          (v) => v.focus
+        ).length;
+        if (focusedCount >= 3) {
+          showToast("You can only focus on up to 3 goals.", {
+            severity: "warning",
+          });
+          return prev; // block without changing
+        }
       }
-    }
 
-    next.set(id, {
-      ...current,
-      focus: nextVal,
-      done: nextVal ? false : current.done, // remove done if focusing
-      status: nextVal ? "in-progress" : current.done ? "done" : "not-started",
+      next.set(id, {
+        ...current,
+        focus: nextVal,
+        done: nextVal ? false : current.done, // remove done if focusing
+        status: nextVal ? "in-progress" : current.done ? "done" : "not-started",
+      });
+
+      return next;
     });
-
-    return next;
-  });
-}
-
+  }
 
   function setGoalField(id, field, value) {
     setPerGoal((prev) => {
@@ -313,15 +316,19 @@ function toggleFocus(id) {
               )}
             </S.HeaderRow>
             <S.Fill>
-              <TextField
-                placeholder="What will you focus on today?"
-                value={plan}
-                onChange={(e) => setPlan(e.target.value)}
-                fullWidth
-                multiline
-                minRows={10}
-                sx={{ flex: 1 }}
-              />
+              <S.TallRight>
+                <S.ScrollFill>
+                  <TextField
+                    placeholder="What will you focus on today?"
+                    value={plan}
+                    onChange={(e) => setPlan(e.target.value)}
+                    fullWidth
+                    multiline
+                    minRows={10}
+                    maxRows={15}
+                  />
+                </S.ScrollFill>
+              </S.TallRight>
             </S.Fill>
           </S.TallRight>
         </SurfaceCard>
